@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Authorize the main app to connect to and bless this helper tool -->
+	<key>SMAuthorizedClients</key>
+	<array>
+		<string>identifier "com.yourdomain.MacMonitor" and anchor apple generic and certificate leaf[subject.CN] = "Apple Development: Your Name (TeamID)"</string>
+	</array>
+</dict>
+</plist>
