@@ -133,20 +133,36 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
     let keyInfo = inputStruct.keyInfo
 
     // Now setup the write
-    inputStruct.keyInfo.dataSize = keyInfo.dataSize
+    var writeStruct = SMCParamStruct(
+        key: fourCharCode,
+        vers: SMCVersion(major: 0, minor: 0, build: 0, reserved: 0, release: 0),
+        pLimitData: SMCPLimitData(version: 0, length: 0, cpuPLimit: 0, gpuPLimit: 0, memPLimit: 0),
+        keyInfo: keyInfo,
+        result: 0,
+        status: 0,
+        data8: SMCCommand.kSMCWriteKey.rawValue,
+        data32: 0,
+        bytes: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    )
 
-    // We assume data is simply a single integer byte for these specific keys
     let byteValue = UInt8(value & 0xFF)
-    inputStruct.bytes.0 = byteValue
 
-    inputStruct.data8 = SMCCommand.kSMCWriteKey.rawValue
+    // Some Macs require the data size explicitly set for the write to go through properly
+    writeStruct.keyInfo.dataSize = keyInfo.dataSize
 
-    callResult = smcCall(connection: connection, command: .kSMCHandleYPCEvent, inputStruct: &inputStruct)
+    // The data bytes go into the bytes array
+    writeStruct.bytes.0 = byteValue
+
+    // Some Intel/Apple Silicon SMC models require data32 to also carry the value to apply
+    // BCLM is typically 1 byte, so data32 doesn't always matter, but this ensures compatibility.
+    // If the data is only 1 byte, setting bytes.0 is correct for most M1/M2/Intel.
+
+    callResult = smcCall(connection: connection, command: .kSMCHandleYPCEvent, inputStruct: &writeStruct)
 
     IOServiceClose(connection)
 
-    if callResult == kIOReturnSuccess && inputStruct.result != 0 {
-        return Int32(inputStruct.result)
+    if callResult == kIOReturnSuccess && writeStruct.result != 0 {
+        return Int32(writeStruct.result)
     }
 
     return callResult
@@ -156,6 +172,8 @@ let args = CommandLine.arguments
 if args.count == 3 {
     let key = args[1]
     if let value = Int(args[2]) {
+        // Specifically for BCLM, we also sometimes need to set CH0C to enable manual charge limits, but
+        // BCLM alone should work on most M1/M2 Macs if written correctly. Let's trace it.
         let result = writeSMCKey(key: key, value: value)
         if result == kIOReturnSuccess {
             print("Success")

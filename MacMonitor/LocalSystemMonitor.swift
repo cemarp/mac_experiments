@@ -1,5 +1,4 @@
 import Foundation
-// import IOKit.ps removed due to bridging header requirements missing
 
 class LocalSystemMonitor {
     static let shared = LocalSystemMonitor()
@@ -158,7 +157,11 @@ class LocalSystemMonitor {
 
             let escapedPath = smcUtilPath.replacingOccurrences(of: "'", with: "'\\''")
 
-            let combinedCmd = "'\(escapedPath)' BCLM \(state.chargeLimit) && '\(escapedPath)' CH0I \(inhibitValue)"
+            // To make BCLM stick on many Apple Silicon/Intel Macs, you must also write to CH0C
+            // to enable custom battery charging limits, otherwise the OS overwrites BCLM.
+            // Some Macs use CH0C = 0x00 to use BCLM, some use CH0C = 0x02.
+            // By writing 0 to CH0C, we tell the OS not to override our BCLM setting.
+            let combinedCmd = "'\(escapedPath)' CH0C 0 && '\(escapedPath)' BCLM \(state.chargeLimit) && '\(escapedPath)' CH0I \(inhibitValue)"
 
             print("[INSTRUMENTATION] Attempting to execute: \(combinedCmd)")
             let writeResult = AdminShell.shared.executeWithPrivileges(command: combinedCmd)
