@@ -1,6 +1,5 @@
 import Foundation
 import Combine
-import ServiceManagement
 
 class AppViewModel: ObservableObject {
     @Published var metricsHistory: [SystemMetrics] = []
@@ -8,72 +7,19 @@ class AppViewModel: ObservableObject {
 
     @Published var batteryState = BatteryControlState() {
         didSet {
-            sendBatteryStateToHelper()
+            sendBatteryStateToMonitor()
         }
     }
 
-    @Published var isHelperInstalled = false
-
     private var timer: Timer?
-    private let client = HelperClient.shared
+    private let monitor = LocalSystemMonitor.shared
 
     // 7 days worth of data, assuming 1 sample every 5 seconds
     // 7 * 24 * 60 * 12 = 120,960 samples max in RAM. This is fine for a modern Mac.
     private let maxHistoryCount = 120960
 
     init() {
-        // Check if helper is installed/registered and begin monitoring
-        refreshHelperInstallationStatus()
         startMonitoring()
-    }
-
-    func installHelper() {
-        if #available(macOS 13.0, *) {
-            let daemonIdentifier = "com.yourdomain.MacMonitor.HelperTool"
-            do {
-                let service = try SMAppService.daemon(plistName: daemonIdentifier)
-                try service.register()
-                DispatchQueue.main.async {
-                    self.isHelperInstalled = true
-                    self.startMonitoring()
-                }
-            } catch {
-                print("Failed to register daemon via SMAppService: \(error)")
-                DispatchQueue.main.async {
-                    self.isHelperInstalled = false
-                }
-            }
-        } else {
-            // Fallback: previous placeholder implementation
-            client.installHelperTool { [weak self] success in
-                DispatchQueue.main.async {
-                    self?.isHelperInstalled = success
-                    if success {
-                        self?.startMonitoring()
-                    }
-                }
-            }
-        }
-    }
-
-    private func refreshHelperInstallationStatus() {
-        if #available(macOS 13.0, *) {
-            do {
-                let service = try SMAppService.daemon(plistName: "com.yourdomain.MacMonitor.HelperTool")
-                switch service.status {
-                case .notRegistered:
-                    self.isHelperInstalled = false
-                default:
-                    self.isHelperInstalled = true
-                }
-            } catch {
-                print("Failed to query SMAppService status: \(error)")
-                self.isHelperInstalled = false
-            }
-        } else {
-            // On older systems, we don't have SMAppService; keep previous assumption or implement legacy check.
-            self.isHelperInstalled = false
-        }
     }
 
     private func startMonitoring() {
@@ -86,8 +32,13 @@ class AppViewModel: ObservableObject {
     }
 
     private func fetchData() {
-        client.fetchMetrics { [weak self] metrics in
-            guard let self = self, let metrics = metrics else { return }
+        monitor.getMetrics { [weak self] metrics, error in
+            guard let self = self, let metrics = metrics, error == nil else {
+                if let error = error {
+                    print("Error fetching metrics: \(error)")
+                }
+                return
+            }
 
             DispatchQueue.main.async {
                 self.currentMetrics = metrics
@@ -118,10 +69,11 @@ class AppViewModel: ObservableObject {
         }
     }
 
-    private func sendBatteryStateToHelper() {
-        client.updateBatteryState(batteryState) { success in
-            // Handle failure if needed
+    private func sendBatteryStateToMonitor() {
+        monitor.updateBatteryControlState(batteryState) { success, error in
+            if let error = error {
+                print("Failed to update battery state: \(error)")
+            }
         }
     }
 }
-
