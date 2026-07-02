@@ -5,14 +5,12 @@ class AppViewModel: ObservableObject {
     @Published var metricsHistory: [SystemMetrics] = []
     @Published var currentMetrics: SystemMetrics?
 
-    @Published var batteryState = BatteryControlState() {
-        didSet {
-            sendBatteryStateToMonitor()
-        }
-    }
+    @Published var batteryState = BatteryControlState()
 
     private var timer: Timer?
     private let monitor = LocalSystemMonitor.shared
+
+    private var cancellables = Set<AnyCancellable>()
 
     // 7 days worth of data, assuming 1 sample every 5 seconds
     // 7 * 24 * 60 * 12 = 120,960 samples max in RAM. This is fine for a modern Mac.
@@ -20,6 +18,16 @@ class AppViewModel: ObservableObject {
 
     init() {
         startMonitoring()
+
+        // Coalesce changes to batteryState so we don't bombard the user with admin prompts
+        // when dragging the slider
+        $batteryState
+            .dropFirst() // Ignore the initial value setup
+            .debounce(for: .seconds(5), scheduler: RunLoop.main)
+            .sink { [weak self] state in
+                self?.sendBatteryStateToMonitor(state)
+            }
+            .store(in: &cancellables)
     }
 
     private func startMonitoring() {
@@ -69,8 +77,8 @@ class AppViewModel: ObservableObject {
         }
     }
 
-    private func sendBatteryStateToMonitor() {
-        monitor.updateBatteryControlState(batteryState) { success, error in
+    private func sendBatteryStateToMonitor(_ state: BatteryControlState) {
+        monitor.updateBatteryControlState(state) { success, error in
             if let error = error {
                 print("Failed to update battery state: \(error)")
             }
