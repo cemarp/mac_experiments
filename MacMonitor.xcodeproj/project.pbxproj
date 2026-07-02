@@ -6,9 +6,42 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7591E922C95FDC3694331CBE /* smc_util in Embed SMC Util */ = {isa = PBXBuildFile; fileRef = B703C09EBBD8FC752D0FC85D /* smc_util */; };
+		B577758E42A87EEDF09E31D0 /* SMCUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C4D182CC5131F53DC7369A /* SMCUtil.swift */; };
+		F1EBF297689A0B7A0DB308CA /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4603B7C6D1FA8865A2C5B1AD /* Cocoa.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B1FD4DA19A6780D84880484D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0BCA29AC2FF5A2B2006EFF03 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BD0227EF2DC831951B81B5FF;
+			remoteInfo = smc_util;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		3770E4DE772D97AC5C618C75 /* Embed SMC Util */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 7;
+			files = (
+				7591E922C95FDC3694331CBE /* smc_util in Embed SMC Util */,
+			);
+			name = "Embed SMC Util";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		0BCA29B42FF5A2B2006EFF03 /* MacMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0BCA29D22FF5A359006EFF03 /* com.yourdomain.MacMonitor.HelperTool.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = com.yourdomain.MacMonitor.HelperTool.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
+		14C4D182CC5131F53DC7369A /* SMCUtil.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SMCUtil.swift; sourceTree = "<group>"; };
+		4603B7C6D1FA8865A2C5B1AD /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		B703C09EBBD8FC752D0FC85D /* smc_util */ = {isa = PBXFileReference; includeInIndex = 0; path = smc_util; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -29,6 +62,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6C14FE105806B694A407BAD7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F1EBF297689A0B7A0DB308CA /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -37,6 +78,8 @@
 			children = (
 				0BCA29B62FF5A2B2006EFF03 /* MacMonitor */,
 				0BCA29B52FF5A2B2006EFF03 /* Products */,
+				C4AE04FF698FE304786982E6 /* Frameworks */,
+				14C4D182CC5131F53DC7369A /* SMCUtil.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -45,8 +88,25 @@
 			children = (
 				0BCA29B42FF5A2B2006EFF03 /* MacMonitor.app */,
 				0BCA29D22FF5A359006EFF03 /* com.yourdomain.MacMonitor.HelperTool.xpc */,
+				B703C09EBBD8FC752D0FC85D /* smc_util */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		1BB98CC6CB6EA03BAA37D69A /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				4603B7C6D1FA8865A2C5B1AD /* Cocoa.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
+		C4AE04FF698FE304786982E6 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1BB98CC6CB6EA03BAA37D69A /* OS X */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -59,10 +119,12 @@
 				0BCA29B02FF5A2B2006EFF03 /* Sources */,
 				0BCA29B12FF5A2B2006EFF03 /* Frameworks */,
 				0BCA29B22FF5A2B2006EFF03 /* Resources */,
+				3770E4DE772D97AC5C618C75 /* Embed SMC Util */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				200316DE5186AF663CF31BEF /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				0BCA29B62FF5A2B2006EFF03 /* MacMonitor */,
@@ -71,6 +133,22 @@
 			productName = MacMonitor;
 			productReference = 0BCA29B42FF5A2B2006EFF03 /* MacMonitor.app */;
 			productType = "com.apple.product-type.application";
+		};
+		BD0227EF2DC831951B81B5FF /* smc_util */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 27102F98CC25DCB161BCB850 /* Build configuration list for PBXNativeTarget "smc_util" */;
+			buildPhases = (
+				5FF8FE146ABEF4A6806B81F6 /* Sources */,
+				6C14FE105806B694A407BAD7 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = smc_util;
+			productName = smc_util;
+			productReference = B703C09EBBD8FC752D0FC85D /* smc_util */;
+			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
@@ -107,6 +185,7 @@
 			projectRoot = "";
 			targets = (
 				0BCA29B32FF5A2B2006EFF03 /* MacMonitor */,
+				BD0227EF2DC831951B81B5FF /* smc_util */,
 			);
 		};
 /* End PBXProject section */
@@ -129,7 +208,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5FF8FE146ABEF4A6806B81F6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B577758E42A87EEDF09E31D0 /* SMCUtil.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		200316DE5186AF663CF31BEF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = smc_util;
+			target = BD0227EF2DC831951B81B5FF /* smc_util */;
+			targetProxy = B1FD4DA19A6780D84880484D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		0BCA29BD2FF5A2B3006EFF03 /* Debug */ = {
@@ -313,6 +409,22 @@
 			};
 			name = Release;
 		};
+		A8345BDB82415A6857A085F1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		DF81F5D1E08773687C648044 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -330,6 +442,15 @@
 			buildConfigurations = (
 				0BCA29C02FF5A2B3006EFF03 /* Debug */,
 				0BCA29C12FF5A2B3006EFF03 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		27102F98CC25DCB161BCB850 /* Build configuration list for PBXNativeTarget "smc_util" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A8345BDB82415A6857A085F1 /* Release */,
+				DF81F5D1E08773687C648044 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

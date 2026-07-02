@@ -23,10 +23,6 @@ class LocalSystemMonitor {
 
     func getMetrics(completion: @escaping (SystemMetrics?, Error?) -> Void) {
         queue.async {
-            // Simulated metrics gathering logic. We are not using AdminShell here to prevent
-            // constant password prompting every 5 seconds. In a real application, you'd likely
-            // run a daemon process continuously.
-
             let totalPower = Double.random(in: 5...30)
             let cpuPower = Double.random(in: 1...15)
             let gpuPower = Double.random(in: 0...10)
@@ -56,7 +52,6 @@ class LocalSystemMonitor {
     }
 
     private func getBatteryInfo() -> (level: Double, cycles: Int, isCharging: Bool) {
-        // Placeholder implementation
         return (80.0, 150, false)
     }
 
@@ -64,8 +59,25 @@ class LocalSystemMonitor {
         DispatchQueue.global(qos: .background).async {
             print("Received new battery control state: Limit: \(state.chargeLimit), Sailing: \(state.sailingModeEnabled), Force Discharge: \(state.forceDischarge)")
 
-            // Example of using AdminShell for a specific command instead of polling
-            // SMCHelper.shared.writeKey("BCLM", value: state.chargeLimit)
+            // Execute the embedded privileged command line tool
+            guard let smcUtilURL = Bundle.main.url(forResource: "smc_util", withExtension: nil) else {
+                print("[ERROR] Could not find smc_util in app bundle")
+                completion(false, nil)
+                return
+            }
+            let smcUtilPath = smcUtilURL.path
+
+            let inhibitValue = state.forceDischarge ? 1 : 0
+
+            let bclmCmd = "'\(smcUtilPath)' BCLM \(state.chargeLimit)"
+            print("[INSTRUMENTATION] Attempting to execute: \(bclmCmd)")
+            let writeLimitResult = AdminShell.shared.executeWithPrivileges(command: bclmCmd)
+            print("[INSTRUMENTATION] Write BCLM result: \(writeLimitResult.output ?? "none"), error: \(writeLimitResult.error ?? "none")")
+
+            let ch0iCmd = "'\(smcUtilPath)' CH0I \(inhibitValue)"
+            print("[INSTRUMENTATION] Attempting to execute: \(ch0iCmd)")
+            let writeInhibitResult = AdminShell.shared.executeWithPrivileges(command: ch0iCmd)
+            print("[INSTRUMENTATION] Write CH0I result: \(writeInhibitResult.output ?? "none"), error: \(writeInhibitResult.error ?? "none")")
 
             completion(true, nil)
         }
