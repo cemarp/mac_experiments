@@ -30,4 +30,9 @@ class AdminShell {
 
         return (result.stringValue, nil)
     }
+
+    func testPermissions() {
+        let result = executeWithPrivileges(command: "whoami")
+        print("Test Permissions Output: \(result.output ?? "nil"), Error: \(result.error ?? "nil")")
+    }
 }

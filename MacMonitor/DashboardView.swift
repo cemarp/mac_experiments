@@ -20,6 +20,13 @@ struct DashboardView: View {
 
                 Divider()
 
+                Button("Test Admin Permissions") {
+                    AdminShell.shared.testPermissions()
+                }
+                .buttonStyle(.borderedProminent)
+
+                Divider()
+
                 if !viewModel.metricsHistory.isEmpty {
                     GraphsView(history: viewModel.metricsHistory)
                 }
