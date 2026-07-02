@@ -107,7 +107,9 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
 
     if result != kIOReturnSuccess { return result }
 
-    // We must call open user client first
+    // AppleSMC requires calling kSMCUserClientOpen via IOConnectCallStructMethod
+    // with kSMCUserClientOpen as the direct command on the connection, not as data8.
+    // Wait, kSMCUserClientOpen is command 0. Let's send that correctly:
     var openStruct = SMCParamStruct(
         key: 0,
         vers: SMCVersion(major: 0, minor: 0, build: 0, reserved: 0, release: 0),
@@ -115,7 +117,7 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
         keyInfo: SMCKeyInfoData(dataSize: 0, dataType: 0, dataAttributes: 0),
         result: 0,
         status: 0,
-        data8: SMCCommand.kSMCUserClientOpen.rawValue,
+        data8: 0,
         data32: 0,
         bytes: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     )
