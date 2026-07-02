@@ -413,6 +413,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_MODULE_NAME = smc_util;
+				PRODUCT_NAME = smc_util;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
 			};
@@ -422,6 +424,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_MODULE_NAME = smc_util;
+				PRODUCT_NAME = smc_util;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.0;
 			};
