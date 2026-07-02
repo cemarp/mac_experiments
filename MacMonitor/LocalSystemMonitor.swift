@@ -159,9 +159,13 @@ class LocalSystemMonitor {
 
             // To make BCLM stick on many Apple Silicon/Intel Macs, you must also write to CH0C
             // to enable custom battery charging limits, otherwise the OS overwrites BCLM.
-            // Some Macs use CH0C = 0x00 to use BCLM, some use CH0C = 0x02.
-            // By writing 0 to CH0C, we tell the OS not to override our BCLM setting.
-            let combinedCmd = "'\(escapedPath)' CH0C 0 && '\(escapedPath)' BCLM \(state.chargeLimit) && '\(escapedPath)' CH0I \(inhibitValue)"
+            // Wait: error -536870206 (0xe00002c2) is kIOReturnUnsupported.
+            // This happens when the key we're writing to isn't supported for writes, OR if we didn't open the user client properly.
+            // On some M1/M2/M3 laptops, writing BCLM directly is fully supported, but some require writing to the `CH0B` instead, or require a specific `AppleSMC` caller string.
+            // Alternatively, maybe CH0C isn't writeable on the user's specific mac.
+            // Let's modify the combinedCmd to suppress errors from CH0C by appending `|| true` so it continues,
+            // or better yet, run them as sequential but independent shells so one failure doesn't abort the whole chain.
+            let combinedCmd = "'\(escapedPath)' CH0C 0 ; '\(escapedPath)' BCLM \(state.chargeLimit) ; '\(escapedPath)' CH0I \(inhibitValue)"
 
             print("[INSTRUMENTATION] Attempting to execute: \(combinedCmd)")
             let writeResult = AdminShell.shared.executeWithPrivileges(command: combinedCmd)

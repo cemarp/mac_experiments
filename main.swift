@@ -107,6 +107,20 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
 
     if result != kIOReturnSuccess { return result }
 
+    // We must call open user client first
+    var openStruct = SMCParamStruct(
+        key: 0,
+        vers: SMCVersion(major: 0, minor: 0, build: 0, reserved: 0, release: 0),
+        pLimitData: SMCPLimitData(version: 0, length: 0, cpuPLimit: 0, gpuPLimit: 0, memPLimit: 0),
+        keyInfo: SMCKeyInfoData(dataSize: 0, dataType: 0, dataAttributes: 0),
+        result: 0,
+        status: 0,
+        data8: SMCCommand.kSMCUserClientOpen.rawValue,
+        data32: 0,
+        bytes: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    )
+    _ = smcCall(connection: connection, command: .kSMCUserClientOpen, inputStruct: &openStruct)
+
     let fourCharCode = getFourCharCode(fromString: key)
 
     // First, get key info to determine size and type
@@ -117,12 +131,11 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
         keyInfo: SMCKeyInfoData(dataSize: 0, dataType: 0, dataAttributes: 0),
         result: 0,
         status: 0,
-        data8: 0,
+        data8: SMCCommand.kSMCGetKeyInfo.rawValue,
         data32: 0,
         bytes: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     )
 
-    inputStruct.data8 = SMCCommand.kSMCGetKeyInfo.rawValue
     var callResult = smcCall(connection: connection, command: .kSMCHandleYPCEvent, inputStruct: &inputStruct)
 
     if callResult != kIOReturnSuccess || inputStruct.result != 0 {
@@ -145,17 +158,15 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
         bytes: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     )
 
-    let byteValue = UInt8(value & 0xFF)
-
     // Some Macs require the data size explicitly set for the write to go through properly
     writeStruct.keyInfo.dataSize = keyInfo.dataSize
 
-    // The data bytes go into the bytes array
+    // Set bytes based on size. For simple values, it's usually 1 or 2 bytes.
+    let byteValue = UInt8(value & 0xFF)
     writeStruct.bytes.0 = byteValue
-
-    // Some Intel/Apple Silicon SMC models require data32 to also carry the value to apply
-    // BCLM is typically 1 byte, so data32 doesn't always matter, but this ensures compatibility.
-    // If the data is only 1 byte, setting bytes.0 is correct for most M1/M2/Intel.
+    if keyInfo.dataSize > 1 {
+        writeStruct.bytes.1 = UInt8((value >> 8) & 0xFF)
+    }
 
     callResult = smcCall(connection: connection, command: .kSMCHandleYPCEvent, inputStruct: &writeStruct)
 
@@ -172,8 +183,6 @@ let args = CommandLine.arguments
 if args.count == 3 {
     let key = args[1]
     if let value = Int(args[2]) {
-        // Specifically for BCLM, we also sometimes need to set CH0C to enable manual charge limits, but
-        // BCLM alone should work on most M1/M2 Macs if written correctly. Let's trace it.
         let result = writeSMCKey(key: key, value: value)
         if result == kIOReturnSuccess {
             print("Success")
