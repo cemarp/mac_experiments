@@ -1,43 +1,6 @@
 import Foundation
 import IOKit
 
-public struct SMCVersion {
-    var major: CUnsignedChar
-    var minor: CUnsignedChar
-    var build: CUnsignedChar
-    var reserved: CUnsignedChar
-    var release: CUnsignedShort
-}
-
-public struct SMCPLimitData {
-    var version: UInt16
-    var length: UInt16
-    var cpuPLimit: UInt32
-    var gpuPLimit: UInt32
-    var memPLimit: UInt32
-}
-
-public struct SMCKeyInfoData {
-    var dataSize: IOByteCount
-    var dataType: UInt32
-    var dataAttributes: UInt8
-}
-
-public struct SMCParamStruct {
-    var key: UInt32
-    var vers: SMCVersion
-    var pLimitData: SMCPLimitData
-    var keyInfo: SMCKeyInfoData
-    var result: UInt8
-    var status: UInt8
-    var data8: UInt8
-    var data32: UInt32
-    var bytes: (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-                UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-                UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-                UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8)
-}
-
 enum SMCCommand: UInt8 {
     case kSMCUserClientOpen = 0
     case kSMCUserClientClose = 1
@@ -61,17 +24,7 @@ func getFourCharCode(fromString string: String) -> UInt32 {
 
 func smcCall(connection: io_connect_t, command: SMCCommand, inputStruct: inout SMCParamStruct) -> Int32 {
     let inputSize = MemoryLayout<SMCParamStruct>.size
-    var outputStruct = SMCParamStruct(
-        key: 0,
-        vers: SMCVersion(major: 0, minor: 0, build: 0, reserved: 0, release: 0),
-        pLimitData: SMCPLimitData(version: 0, length: 0, cpuPLimit: 0, gpuPLimit: 0, memPLimit: 0),
-        keyInfo: SMCKeyInfoData(dataSize: 0, dataType: 0, dataAttributes: 0),
-        result: 0,
-        status: 0,
-        data8: 0,
-        data32: 0,
-        bytes: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    )
+    var outputStruct = SMCParamStruct()
     var outputSize = MemoryLayout<SMCParamStruct>.size
 
     let result = IOConnectCallStructMethod(
@@ -107,36 +60,17 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
 
     if result != kIOReturnSuccess { return result }
 
-    // AppleSMC requires calling kSMCUserClientOpen via IOConnectCallStructMethod
-    // with kSMCUserClientOpen as the direct command on the connection, not as data8.
-    // Wait, kSMCUserClientOpen is command 0. Let's send that correctly:
-    var openStruct = SMCParamStruct(
-        key: 0,
-        vers: SMCVersion(major: 0, minor: 0, build: 0, reserved: 0, release: 0),
-        pLimitData: SMCPLimitData(version: 0, length: 0, cpuPLimit: 0, gpuPLimit: 0, memPLimit: 0),
-        keyInfo: SMCKeyInfoData(dataSize: 0, dataType: 0, dataAttributes: 0),
-        result: 0,
-        status: 0,
-        data8: 0,
-        data32: 0,
-        bytes: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    )
+    // We must call open user client first
+    var openStruct = SMCParamStruct()
+    openStruct.data8 = SMCCommand.kSMCUserClientOpen.rawValue
     _ = smcCall(connection: connection, command: .kSMCUserClientOpen, inputStruct: &openStruct)
 
     let fourCharCode = getFourCharCode(fromString: key)
 
     // First, get key info to determine size and type
-    var inputStruct = SMCParamStruct(
-        key: fourCharCode,
-        vers: SMCVersion(major: 0, minor: 0, build: 0, reserved: 0, release: 0),
-        pLimitData: SMCPLimitData(version: 0, length: 0, cpuPLimit: 0, gpuPLimit: 0, memPLimit: 0),
-        keyInfo: SMCKeyInfoData(dataSize: 0, dataType: 0, dataAttributes: 0),
-        result: 0,
-        status: 0,
-        data8: SMCCommand.kSMCGetKeyInfo.rawValue,
-        data32: 0,
-        bytes: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    )
+    var inputStruct = SMCParamStruct()
+    inputStruct.key = fourCharCode
+    inputStruct.data8 = SMCCommand.kSMCGetKeyInfo.rawValue
 
     var callResult = smcCall(connection: connection, command: .kSMCHandleYPCEvent, inputStruct: &inputStruct)
 
@@ -148,26 +82,21 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
     let keyInfo = inputStruct.keyInfo
 
     // Now setup the write
-    var writeStruct = SMCParamStruct(
-        key: fourCharCode,
-        vers: SMCVersion(major: 0, minor: 0, build: 0, reserved: 0, release: 0),
-        pLimitData: SMCPLimitData(version: 0, length: 0, cpuPLimit: 0, gpuPLimit: 0, memPLimit: 0),
-        keyInfo: keyInfo,
-        result: 0,
-        status: 0,
-        data8: SMCCommand.kSMCWriteKey.rawValue,
-        data32: 0,
-        bytes: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    )
-
-    // Some Macs require the data size explicitly set for the write to go through properly
+    var writeStruct = SMCParamStruct()
+    writeStruct.key = fourCharCode
+    writeStruct.keyInfo = keyInfo
+    writeStruct.data8 = SMCCommand.kSMCWriteKey.rawValue
     writeStruct.keyInfo.dataSize = keyInfo.dataSize
 
-    // Set bytes based on size. For simple values, it's usually 1 or 2 bytes.
-    let byteValue = UInt8(value & 0xFF)
-    writeStruct.bytes.0 = byteValue
-    if keyInfo.dataSize > 1 {
-        writeStruct.bytes.1 = UInt8((value >> 8) & 0xFF)
+    // Convert Swift tuple to C array via pointer manipulation is messy.
+    // However, Swift imports the 32-element array as a tuple. We can modify it via reflection or pointer casting.
+    withUnsafeMutablePointer(to: &writeStruct.bytes) { bytesPtr in
+        let rawPtr = UnsafeMutableRawPointer(bytesPtr).assumingMemoryBound(to: UInt8.self)
+        let byteValue = UInt8(value & 0xFF)
+        rawPtr[0] = byteValue
+        if keyInfo.dataSize > 1 {
+            rawPtr[1] = UInt8((value >> 8) & 0xFF)
+        }
     }
 
     callResult = smcCall(connection: connection, command: .kSMCHandleYPCEvent, inputStruct: &writeStruct)

@@ -40,6 +40,8 @@
 		0BCA29B42FF5A2B2006EFF03 /* MacMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0BCA29D22FF5A359006EFF03 /* com.yourdomain.MacMonitor.HelperTool.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = com.yourdomain.MacMonitor.HelperTool.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
 		14C4D182CC5131F53DC7369A /* main.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = main.swift; path = main.swift; sourceTree = "<group>"; };
+		1B8C9E698B189F8ACB83977E /* smc_util-Bridging-Header.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = "smc_util-Bridging-Header.h"; sourceTree = "<group>"; };
+		32C7E830C1035BD90BD72E4D /* SMC.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = SMC.h; sourceTree = "<group>"; };
 		4603B7C6D1FA8865A2C5B1AD /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		B703C09EBBD8FC752D0FC85D /* smc_util */ = {isa = PBXFileReference; includeInIndex = 0; path = smc_util; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -80,6 +82,8 @@
 				0BCA29B52FF5A2B2006EFF03 /* Products */,
 				C4AE04FF698FE304786982E6 /* Frameworks */,
 				14C4D182CC5131F53DC7369A /* main.swift */,
+				1B8C9E698B189F8ACB83977E /* smc_util-Bridging-Header.h */,
+				32C7E830C1035BD90BD72E4D /* SMC.h */,
 			);
 			sourceTree = "<group>";
 		};
@@ -416,6 +420,7 @@
 				PRODUCT_MODULE_NAME = smc_util;
 				PRODUCT_NAME = smc_util;
 				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "smc_util-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -427,6 +432,7 @@
 				PRODUCT_MODULE_NAME = smc_util;
 				PRODUCT_NAME = smc_util;
 				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "smc_util-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
