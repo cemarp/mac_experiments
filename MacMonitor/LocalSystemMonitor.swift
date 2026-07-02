@@ -59,25 +59,29 @@ class LocalSystemMonitor {
         DispatchQueue.global(qos: .background).async {
             print("Received new battery control state: Limit: \(state.chargeLimit), Sailing: \(state.sailingModeEnabled), Force Discharge: \(state.forceDischarge)")
 
-            // Execute the embedded privileged command line tool
             guard let smcUtilURL = Bundle.main.url(forResource: "smc_util", withExtension: nil) else {
                 print("[ERROR] Could not find smc_util in app bundle")
                 completion(false, nil)
                 return
             }
             let smcUtilPath = smcUtilURL.path
-
             let inhibitValue = state.forceDischarge ? 1 : 0
 
-            let bclmCmd = "'\(smcUtilPath)' BCLM \(state.chargeLimit)"
-            print("[INSTRUMENTATION] Attempting to execute: \(bclmCmd)")
-            let writeLimitResult = AdminShell.shared.executeWithPrivileges(command: bclmCmd)
-            print("[INSTRUMENTATION] Write BCLM result: \(writeLimitResult.output ?? "none"), error: \(writeLimitResult.error ?? "none")")
+            // Execute the embedded privileged command line tool.
+            // AdminShell safely escapes double quotes and backslashes in the command string, but we must
+            // also properly escape the path to the executable to prevent shell injection if the app is placed
+            // in a path containing single quotes or other shell metacharacters.
+            // The safest way in a single shell command without complex escaping is to cd to the directory
+            // or pass arguments properly. AppleScript's 'quoted form of' handles this best, but we are
+            // building the string here. We can use a small wrapper function or manually escape.
 
-            let ch0iCmd = "'\(smcUtilPath)' CH0I \(inhibitValue)"
-            print("[INSTRUMENTATION] Attempting to execute: \(ch0iCmd)")
-            let writeInhibitResult = AdminShell.shared.executeWithPrivileges(command: ch0iCmd)
-            print("[INSTRUMENTATION] Write CH0I result: \(writeInhibitResult.output ?? "none"), error: \(writeInhibitResult.error ?? "none")")
+            let escapedPath = smcUtilPath.replacingOccurrences(of: "'", with: "'\\''")
+
+            let combinedCmd = "'\(escapedPath)' BCLM \(state.chargeLimit) && '\(escapedPath)' CH0I \(inhibitValue)"
+
+            print("[INSTRUMENTATION] Attempting to execute: \(combinedCmd)")
+            let writeResult = AdminShell.shared.executeWithPrivileges(command: combinedCmd)
+            print("[INSTRUMENTATION] Write combined result: \(writeResult.output ?? "none"), error: \(writeResult.error ?? "none")")
 
             completion(true, nil)
         }
