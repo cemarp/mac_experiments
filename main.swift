@@ -76,7 +76,12 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
 
     if callResult != kIOReturnSuccess || inputStruct.result != 0 {
         IOServiceClose(connection)
-        return callResult == kIOReturnSuccess ? Int32(inputStruct.result) : callResult
+        // Check if there was an AppleSMC specific error inside result
+        if callResult == kIOReturnSuccess {
+            print("SMC Error getting key info: \(inputStruct.result)")
+            return Int32(inputStruct.result)
+        }
+        return callResult
     }
 
     let keyInfo = inputStruct.keyInfo
@@ -88,8 +93,6 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
     writeStruct.data8 = SMCCommand.kSMCWriteKey.rawValue
     writeStruct.keyInfo.dataSize = keyInfo.dataSize
 
-    // Convert Swift tuple to C array via pointer manipulation is messy.
-    // However, Swift imports the 32-element array as a tuple. We can modify it via reflection or pointer casting.
     withUnsafeMutablePointer(to: &writeStruct.bytes) { bytesPtr in
         let rawPtr = UnsafeMutableRawPointer(bytesPtr).assumingMemoryBound(to: UInt8.self)
         let byteValue = UInt8(value & 0xFF)
@@ -104,6 +107,7 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
     IOServiceClose(connection)
 
     if callResult == kIOReturnSuccess && writeStruct.result != 0 {
+        print("SMC Error writing key: \(writeStruct.result)")
         return Int32(writeStruct.result)
     }
 

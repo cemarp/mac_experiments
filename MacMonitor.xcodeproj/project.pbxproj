@@ -124,6 +124,7 @@
 				0BCA29B12FF5A2B2006EFF03 /* Frameworks */,
 				0BCA29B22FF5A2B2006EFF03 /* Resources */,
 				3770E4DE772D97AC5C618C75 /* Embed SMC Util */,
+				CD33100CDB7B66559DA7AE4D /* Inject Build Info */,
 			);
 			buildRules = (
 			);
@@ -203,6 +204,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		CD33100CDB7B66559DA7AE4D /* Inject Build Info */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Inject Build Info";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "bash \"$SRCROOT/build_script.sh\"";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		0BCA29B02FF5A2B2006EFF03 /* Sources */ = {

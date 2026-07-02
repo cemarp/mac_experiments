@@ -165,6 +165,7 @@ class LocalSystemMonitor {
             // Alternatively, maybe CH0C isn't writeable on the user's specific mac.
             // Let's modify the combinedCmd to suppress errors from CH0C by appending `|| true` so it continues,
             // or better yet, run them as sequential but independent shells so one failure doesn't abort the whole chain.
+
             let combinedCmd = "'\(escapedPath)' CH0C 0 ; '\(escapedPath)' BCLM \(state.chargeLimit) ; '\(escapedPath)' CH0I \(inhibitValue)"
 
             print("[INSTRUMENTATION] Attempting to execute: \(combinedCmd)")
