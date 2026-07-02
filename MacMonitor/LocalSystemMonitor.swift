@@ -1,4 +1,5 @@
 import Foundation
+// import IOKit.ps removed due to bridging header requirements missing
 
 class LocalSystemMonitor {
     static let shared = LocalSystemMonitor()
@@ -52,7 +53,95 @@ class LocalSystemMonitor {
     }
 
     private func getBatteryInfo() -> (level: Double, cycles: Int, isCharging: Bool) {
-        return (80.0, 150, false)
+        var level: Double = 0
+        var cycles: Int = 0
+        var isCharging: Bool = false
+
+        let task = Process()
+        task.launchPath = "/usr/sbin/ioreg"
+        task.arguments = ["-rn", "AppleSmartBattery"]
+
+        let pipe = Pipe()
+        task.standardOutput = pipe
+
+        do {
+            try task.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let output = String(data: data, encoding: .utf8) {
+                // Parse "CurrentCapacity" = 70
+                // Parse "MaxCapacity" = 100
+                // Parse "CycleCount" = 120
+                // Parse "IsCharging" = Yes/No (or True/False)
+
+                var currentCapacity: Double = 0
+                var maxCapacity: Double = 100
+
+                let lines = output.components(separatedBy: .newlines)
+                for line in lines {
+                    if line.contains("\"CurrentCapacity\" =") {
+                        if let valStr = line.components(separatedBy: "=").last?.trimmingCharacters(in: .whitespacesAndNewlines),
+                           let val = Double(valStr) {
+                            currentCapacity = val
+                        }
+                    } else if line.contains("\"MaxCapacity\" =") {
+                        if let valStr = line.components(separatedBy: "=").last?.trimmingCharacters(in: .whitespacesAndNewlines),
+                           let val = Double(valStr) {
+                            maxCapacity = val
+                        }
+                    } else if line.contains("\"CycleCount\" =") {
+                        if let valStr = line.components(separatedBy: "=").last?.trimmingCharacters(in: .whitespacesAndNewlines),
+                           let val = Int(valStr) {
+                            cycles = val
+                        }
+                    } else if line.contains("\"IsCharging\" =") {
+                        if let valStr = line.components(separatedBy: "=").last?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                            isCharging = (valStr.lowercased() == "yes" || valStr.lowercased() == "true")
+                        }
+                    }
+                }
+
+                if maxCapacity > 0 {
+                    level = (currentCapacity / maxCapacity) * 100.0
+                }
+            }
+        } catch {
+            print("Error running ioreg: \(error)")
+        }
+
+        // Fallback if ioreg fails or doesn't return MaxCapacity
+        if level == 0 {
+            let pmsetTask = Process()
+            pmsetTask.launchPath = "/usr/bin/pmset"
+            pmsetTask.arguments = ["-g", "batt"]
+
+            let pmsetPipe = Pipe()
+            pmsetTask.standardOutput = pmsetPipe
+
+            do {
+                try pmsetTask.run()
+                let pmsetData = pmsetPipe.fileHandleForReading.readDataToEndOfFile()
+                if let pmsetOutput = String(data: pmsetData, encoding: .utf8) {
+                    // Look for something like "70%; charging"
+                    if let regex = try? NSRegularExpression(pattern: #"(\d+)%;\s*(charging|discharging|AC attached)"#, options: .caseInsensitive) {
+                        let nsRange = NSRange(pmsetOutput.startIndex..<pmsetOutput.endIndex, in: pmsetOutput)
+                        if let match = regex.firstMatch(in: pmsetOutput, options: [], range: nsRange) {
+                            if let levelRange = Range(match.range(at: 1), in: pmsetOutput),
+                               let levelVal = Double(pmsetOutput[levelRange]) {
+                                level = levelVal
+                            }
+                            if let statusRange = Range(match.range(at: 2), in: pmsetOutput) {
+                                let statusStr = String(pmsetOutput[statusRange]).lowercased()
+                                isCharging = statusStr.contains("charging") && !statusStr.contains("discharging")
+                            }
+                        }
+                    }
+                }
+            } catch {
+                print("Error running pmset: \(error)")
+            }
+        }
+
+        return (level, cycles, isCharging)
     }
 
     func updateBatteryControlState(_ state: BatteryControlState, completion: @escaping (Bool, Error?) -> Void) {
@@ -66,14 +155,6 @@ class LocalSystemMonitor {
             }
             let smcUtilPath = smcUtilURL.path
             let inhibitValue = state.forceDischarge ? 1 : 0
-
-            // Execute the embedded privileged command line tool.
-            // AdminShell safely escapes double quotes and backslashes in the command string, but we must
-            // also properly escape the path to the executable to prevent shell injection if the app is placed
-            // in a path containing single quotes or other shell metacharacters.
-            // The safest way in a single shell command without complex escaping is to cd to the directory
-            // or pass arguments properly. AppleScript's 'quoted form of' handles this best, but we are
-            // building the string here. We can use a small wrapper function or manually escape.
 
             let escapedPath = smcUtilPath.replacingOccurrences(of: "'", with: "'\\''")
 
