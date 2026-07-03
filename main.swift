@@ -123,14 +123,15 @@ if args.count == 3 {
             print("Success")
             exit(0)
         } else {
-            print("Error: \(result)")
+            // Write the error out to stderr so the AdminShell process can correctly capture and surface it to the user.
+            fputs("Error: \(result)\n", stderr)
             exit(1)
         }
     } else {
-        print("Invalid value")
+        fputs("Invalid value\n", stderr)
         exit(1)
     }
 } else {
-    print("Usage: smc_util <key> <value>")
+    fputs("Usage: smc_util <key> <value>\n", stderr)
     exit(1)
 }
