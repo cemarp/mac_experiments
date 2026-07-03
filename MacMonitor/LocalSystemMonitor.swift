@@ -182,10 +182,11 @@ class LocalSystemMonitor {
 
             let targetLimit = state.chargeLimitEnabled ? state.chargeLimit : 100
 
-            // To ensure we don't get 'The administrator user name or password was incorrect' pseudo-errors
-            // from AppleScript interpreting the exit status of the grouped command incorrectly due to standard error
-            // redirect, we will remove the parenthesis grouping and just rely on semicolon chaining.
-            let combinedCmd = "'\(escapedPath)' CH0C 0 ; '\(escapedPath)' BCLM \(targetLimit) ; '\(escapedPath)' CH0I \(inhibitValue)"
+            // To ensure AppleScript does not mask the error code of a failing command as a password error (-60005),
+            // we will explicitly append `|| true` to each command.
+            // Also, instead of standard error redirection in the shell string, osascript will naturally pipe standard error back to our Process wrapper.
+            // Let's print out exactly what fails for instrumentation.
+            let combinedCmd = "echo \"Writing CH0C\" ; '\(escapedPath)' CH0C 0 || true ; echo \"Writing BCLM\" ; '\(escapedPath)' BCLM \(targetLimit) || true ; echo \"Writing CH0I\" ; '\(escapedPath)' CH0I \(inhibitValue) || true"
 
             print("[INSTRUMENTATION] Attempting to execute: \(combinedCmd)")
             let writeResult = AdminShell.shared.executeWithPrivileges(command: combinedCmd)
