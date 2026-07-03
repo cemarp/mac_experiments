@@ -167,7 +167,10 @@ class LocalSystemMonitor {
     }
 
     func updateBatteryControlState(_ state: BatteryControlState, completion: @escaping (Bool, Error?) -> Void) {
-        DispatchQueue.global(qos: .background).async {
+        // macOS requires UI interactions (like the authentication prompt presented by NSAppleScript)
+        // to be invoked from the main thread. Running it on a background DispatchQueue causes it to
+        // silently fail or be denied by the system with error -60005.
+        DispatchQueue.main.async {
             print("Received new battery control state: LimitEnabled: \(state.chargeLimitEnabled), Limit: \(state.chargeLimit), Sailing: \(state.sailingModeEnabled), Force Discharge: \(state.forceDischarge)")
 
             guard let smcUtilURL = Bundle.main.url(forResource: "smc_util", withExtension: nil) else {
@@ -182,10 +185,6 @@ class LocalSystemMonitor {
 
             let targetLimit = state.chargeLimitEnabled ? state.chargeLimit : 100
 
-            // To ensure AppleScript does not mask the error code of a failing command as a password error (-60005),
-            // we will explicitly append `|| true` to each command.
-            // Also, instead of standard error redirection in the shell string, osascript will naturally pipe standard error back to our Process wrapper.
-            // Let's print out exactly what fails for instrumentation.
             let combinedCmd = "echo \"Writing CH0C\" ; '\(escapedPath)' CH0C 0 || true ; echo \"Writing BCLM\" ; '\(escapedPath)' BCLM \(targetLimit) || true ; echo \"Writing CH0I\" ; '\(escapedPath)' CH0I \(inhibitValue) || true"
 
             print("[INSTRUMENTATION] Attempting to execute: \(combinedCmd)")
