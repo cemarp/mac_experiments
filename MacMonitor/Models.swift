@@ -21,7 +21,11 @@ public struct SystemMetrics: Codable, Identifiable {
     public let isCharging: Bool
     public let isDischarging: Bool
 
-    public init(id: UUID = UUID(), timestamp: Date = Date(), totalPower: Double, cpuPower: Double, gpuPower: Double, anePower: Double, cpuTemp: Double, gpuTemp: Double, batteryTemp: Double, batteryLevel: Double, batteryCycles: Int, isCharging: Bool, isDischarging: Bool) {
+    // Charger
+    public let chargerPower: Double
+    public let batteryChargingPower: Double
+
+    public init(id: UUID = UUID(), timestamp: Date = Date(), totalPower: Double, cpuPower: Double, gpuPower: Double, anePower: Double, cpuTemp: Double, gpuTemp: Double, batteryTemp: Double, batteryLevel: Double, batteryCycles: Int, isCharging: Bool, isDischarging: Bool, chargerPower: Double = 0.0, batteryChargingPower: Double = 0.0) {
         self.id = id
         self.timestamp = timestamp
         self.totalPower = totalPower
@@ -35,6 +39,8 @@ public struct SystemMetrics: Codable, Identifiable {
         self.batteryCycles = batteryCycles
         self.isCharging = isCharging
         self.isDischarging = isDischarging
+        self.chargerPower = chargerPower
+        self.batteryChargingPower = batteryChargingPower
     }
 }
 

@@ -33,6 +33,12 @@ class LocalSystemMonitor {
 
             let batteryInfo = self.getBatteryInfo()
 
+            // To get battery charging power, we can parse the Amperage and Voltage from ioreg,
+            // or we can just derive it if we assume totalPower includes it,
+            // but usually battery charging power is a separate metric.
+            // Since the user asked to "get the current power from the charger and subtract total power",
+            // we can simulate this or parse `system_profiler SPPowerDataType` for "Wattage".
+
             self.latestMetrics = SystemMetrics(
                 totalPower: totalPower,
                 cpuPower: cpuPower,
@@ -44,17 +50,20 @@ class LocalSystemMonitor {
                 batteryLevel: batteryInfo.level,
                 batteryCycles: batteryInfo.cycles,
                 isCharging: batteryInfo.isCharging,
-                isDischarging: !batteryInfo.isCharging
+                isDischarging: !batteryInfo.isCharging,
+                chargerPower: batteryInfo.chargerWattage,
+                batteryChargingPower: batteryInfo.chargerWattage > 0 ? max(0, batteryInfo.chargerWattage - totalPower) : 0
             )
 
             completion(self.latestMetrics, nil)
         }
     }
 
-    private func getBatteryInfo() -> (level: Double, cycles: Int, isCharging: Bool) {
+    private func getBatteryInfo() -> (level: Double, cycles: Int, isCharging: Bool, chargerWattage: Double) {
         var level: Double = 0
         var cycles: Int = 0
         var isCharging: Bool = false
+        var chargerWattage: Double = 0
 
         let task = Process()
         task.launchPath = "/usr/sbin/ioreg"
@@ -107,6 +116,34 @@ class LocalSystemMonitor {
             print("Error running ioreg: \(error)")
         }
 
+        // Also fetch charger wattage from system_profiler
+        let spTask = Process()
+        spTask.launchPath = "/usr/sbin/system_profiler"
+        spTask.arguments = ["SPPowerDataType"]
+        let spPipe = Pipe()
+        spTask.standardOutput = spPipe
+
+        do {
+            try spTask.run()
+            let spData = spPipe.fileHandleForReading.readDataToEndOfFile()
+            if let spOutput = String(data: spData, encoding: .utf8) {
+                let lines = spOutput.components(separatedBy: .newlines)
+                for line in lines {
+                    if line.contains("Wattage (W):") {
+                        let parts = line.components(separatedBy: ":")
+                        if parts.count > 1 {
+                            let valStr = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                            if let val = Double(valStr) {
+                                chargerWattage = val
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {
+            print("Error running system_profiler: \(error)")
+        }
+
         // Fallback if ioreg fails or doesn't return MaxCapacity
         if level == 0 {
             let pmsetTask = Process()
@@ -140,7 +177,7 @@ class LocalSystemMonitor {
             }
         }
 
-        return (level, cycles, isCharging)
+        return (level, cycles, isCharging, chargerWattage)
     }
 
     func updateBatteryControlState(_ state: BatteryControlState, completion: @escaping (Bool, Error?) -> Void) {
@@ -156,15 +193,6 @@ class LocalSystemMonitor {
             let inhibitValue = state.forceDischarge ? 1 : 0
 
             let escapedPath = smcUtilPath.replacingOccurrences(of: "'", with: "'\\''")
-
-            // To make BCLM stick on many Apple Silicon/Intel Macs, you must also write to CH0C
-            // to enable custom battery charging limits, otherwise the OS overwrites BCLM.
-            // Wait: error -536870206 (0xe00002c2) is kIOReturnUnsupported.
-            // This happens when the key we're writing to isn't supported for writes, OR if we didn't open the user client properly.
-            // On some M1/M2/M3 laptops, writing BCLM directly is fully supported, but some require writing to the `CH0B` instead, or require a specific `AppleSMC` caller string.
-            // Alternatively, maybe CH0C isn't writeable on the user's specific mac.
-            // Let's modify the combinedCmd to suppress errors from CH0C by appending `|| true` so it continues,
-            // or better yet, run them as sequential but independent shells so one failure doesn't abort the whole chain.
 
             let combinedCmd = "'\(escapedPath)' CH0C 0 ; '\(escapedPath)' BCLM \(state.chargeLimit) ; '\(escapedPath)' CH0I \(inhibitValue)"
 
