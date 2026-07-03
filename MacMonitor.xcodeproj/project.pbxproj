@@ -120,11 +120,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 0BCA29BF2FF5A2B3006EFF03 /* Build configuration list for PBXNativeTarget "MacMonitor" */;
 			buildPhases = (
+				CD33100CDB7B66559DA7AE4D /* Inject Build Info */,
 				0BCA29B02FF5A2B2006EFF03 /* Sources */,
 				0BCA29B12FF5A2B2006EFF03 /* Frameworks */,
 				0BCA29B22FF5A2B2006EFF03 /* Resources */,
 				3770E4DE772D97AC5C618C75 /* Embed SMC Util */,
-				CD33100CDB7B66559DA7AE4D /* Inject Build Info */,
 			);
 			buildRules = (
 			);
