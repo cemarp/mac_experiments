@@ -33,12 +33,6 @@ class LocalSystemMonitor {
 
             let batteryInfo = self.getBatteryInfo()
 
-            // To get battery charging power, we can parse the Amperage and Voltage from ioreg,
-            // or we can just derive it if we assume totalPower includes it,
-            // but usually battery charging power is a separate metric.
-            // Since the user asked to "get the current power from the charger and subtract total power",
-            // we can simulate this or parse `system_profiler SPPowerDataType` for "Wattage".
-
             self.latestMetrics = SystemMetrics(
                 totalPower: totalPower,
                 cpuPower: cpuPower,
@@ -76,11 +70,6 @@ class LocalSystemMonitor {
             try task.run()
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             if let output = String(data: data, encoding: .utf8) {
-                // Parse "CurrentCapacity" = 70
-                // Parse "MaxCapacity" = 100
-                // Parse "CycleCount" = 120
-                // Parse "IsCharging" = Yes/No (or True/False)
-
                 var currentCapacity: Double = 0
                 var maxCapacity: Double = 100
 
@@ -116,7 +105,6 @@ class LocalSystemMonitor {
             print("Error running ioreg: \(error)")
         }
 
-        // Also fetch charger wattage from system_profiler
         let spTask = Process()
         spTask.launchPath = "/usr/sbin/system_profiler"
         spTask.arguments = ["SPPowerDataType"]
@@ -144,7 +132,6 @@ class LocalSystemMonitor {
             print("Error running system_profiler: \(error)")
         }
 
-        // Fallback if ioreg fails or doesn't return MaxCapacity
         if level == 0 {
             let pmsetTask = Process()
             pmsetTask.launchPath = "/usr/bin/pmset"
@@ -157,7 +144,6 @@ class LocalSystemMonitor {
                 try pmsetTask.run()
                 let pmsetData = pmsetPipe.fileHandleForReading.readDataToEndOfFile()
                 if let pmsetOutput = String(data: pmsetData, encoding: .utf8) {
-                    // Look for something like "70%; charging"
                     if let regex = try? NSRegularExpression(pattern: #"(\d+)%;\s*(charging|discharging|AC attached)"#, options: .caseInsensitive) {
                         let nsRange = NSRange(pmsetOutput.startIndex..<pmsetOutput.endIndex, in: pmsetOutput)
                         if let match = regex.firstMatch(in: pmsetOutput, options: [], range: nsRange) {
@@ -182,7 +168,7 @@ class LocalSystemMonitor {
 
     func updateBatteryControlState(_ state: BatteryControlState, completion: @escaping (Bool, Error?) -> Void) {
         DispatchQueue.global(qos: .background).async {
-            print("Received new battery control state: Limit: \(state.chargeLimit), Sailing: \(state.sailingModeEnabled), Force Discharge: \(state.forceDischarge)")
+            print("Received new battery control state: LimitEnabled: \(state.chargeLimitEnabled), Limit: \(state.chargeLimit), Sailing: \(state.sailingModeEnabled), Force Discharge: \(state.forceDischarge)")
 
             guard let smcUtilURL = Bundle.main.url(forResource: "smc_util", withExtension: nil) else {
                 print("[ERROR] Could not find smc_util in app bundle")
@@ -194,7 +180,10 @@ class LocalSystemMonitor {
 
             let escapedPath = smcUtilPath.replacingOccurrences(of: "'", with: "'\\''")
 
-            let combinedCmd = "'\(escapedPath)' CH0C 0 ; '\(escapedPath)' BCLM \(state.chargeLimit) ; '\(escapedPath)' CH0I \(inhibitValue)"
+            // If the limit is disabled, we set it back to 100% so it charges normally.
+            let targetLimit = state.chargeLimitEnabled ? state.chargeLimit : 100
+
+            let combinedCmd = "'\(escapedPath)' CH0C 0 ; '\(escapedPath)' BCLM \(targetLimit) ; '\(escapedPath)' CH0I \(inhibitValue)"
 
             print("[INSTRUMENTATION] Attempting to execute: \(combinedCmd)")
             let writeResult = AdminShell.shared.executeWithPrivileges(command: combinedCmd)

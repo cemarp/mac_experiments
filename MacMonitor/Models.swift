@@ -45,12 +45,14 @@ public struct SystemMetrics: Codable, Identifiable {
 }
 
 public struct BatteryControlState: Codable {
+    public var chargeLimitEnabled: Bool // Toggle the limit
     public var chargeLimit: Int // 0-100
     public var sailingModeEnabled: Bool
     public var sailingModeLowerLimit: Int // e.g., if limit is 80, lower limit might be 75
     public var forceDischarge: Bool
 
-    public init(chargeLimit: Int = 80, sailingModeEnabled: Bool = false, sailingModeLowerLimit: Int = 75, forceDischarge: Bool = false) {
+    public init(chargeLimitEnabled: Bool = true, chargeLimit: Int = 80, sailingModeEnabled: Bool = false, sailingModeLowerLimit: Int = 75, forceDischarge: Bool = false) {
+        self.chargeLimitEnabled = chargeLimitEnabled
         self.chargeLimit = chargeLimit
         self.sailingModeEnabled = sailingModeEnabled
         self.sailingModeLowerLimit = sailingModeLowerLimit
