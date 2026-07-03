@@ -14,6 +14,8 @@ class AdminShell {
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
 
+        // We do not append 2>/dev/null to the AppleScript command string itself,
+        // because AppleScript evaluates it directly. We handled it in the Swift side.
         let appleScriptSource = "do shell script \"\(escapedCommand)\" with administrator privileges"
 
         var errorDict: NSDictionary?

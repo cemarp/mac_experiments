@@ -182,10 +182,10 @@ class LocalSystemMonitor {
 
             let targetLimit = state.chargeLimitEnabled ? state.chargeLimit : 100
 
-            // Redirect stderr to /dev/null for AppleScript to suppress noisy OS-level warnings like
-            // "FSFindFolder failed with error=-43" or XProtect rules paths.
-            // The actual SMC util output will still go to stdout.
-            let combinedCmd = "('\(escapedPath)' CH0C 0 ; '\(escapedPath)' BCLM \(targetLimit) ; '\(escapedPath)' CH0I \(inhibitValue)) 2>/dev/null"
+            // To ensure we don't get 'The administrator user name or password was incorrect' pseudo-errors
+            // from AppleScript interpreting the exit status of the grouped command incorrectly due to standard error
+            // redirect, we will remove the parenthesis grouping and just rely on semicolon chaining.
+            let combinedCmd = "'\(escapedPath)' CH0C 0 ; '\(escapedPath)' BCLM \(targetLimit) ; '\(escapedPath)' CH0I \(inhibitValue)"
 
             print("[INSTRUMENTATION] Attempting to execute: \(combinedCmd)")
             let writeResult = AdminShell.shared.executeWithPrivileges(command: combinedCmd)
