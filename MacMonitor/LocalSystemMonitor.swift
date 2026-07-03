@@ -180,10 +180,12 @@ class LocalSystemMonitor {
 
             let escapedPath = smcUtilPath.replacingOccurrences(of: "'", with: "'\\''")
 
-            // If the limit is disabled, we set it back to 100% so it charges normally.
             let targetLimit = state.chargeLimitEnabled ? state.chargeLimit : 100
 
-            let combinedCmd = "'\(escapedPath)' CH0C 0 ; '\(escapedPath)' BCLM \(targetLimit) ; '\(escapedPath)' CH0I \(inhibitValue)"
+            // Redirect stderr to /dev/null for AppleScript to suppress noisy OS-level warnings like
+            // "FSFindFolder failed with error=-43" or XProtect rules paths.
+            // The actual SMC util output will still go to stdout.
+            let combinedCmd = "('\(escapedPath)' CH0C 0 ; '\(escapedPath)' BCLM \(targetLimit) ; '\(escapedPath)' CH0I \(inhibitValue)) 2>/dev/null"
 
             print("[INSTRUMENTATION] Attempting to execute: \(combinedCmd)")
             let writeResult = AdminShell.shared.executeWithPrivileges(command: combinedCmd)
