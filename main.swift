@@ -78,7 +78,7 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
         IOServiceClose(connection)
         // Check if there was an AppleSMC specific error inside result
         if callResult == kIOReturnSuccess {
-            print("SMC Error getting key info: \(inputStruct.result)")
+            fputs("SMC Error getting key info: \(inputStruct.result)\n", stderr)
             return Int32(inputStruct.result)
         }
         return callResult
@@ -107,7 +107,7 @@ func writeSMCKey(key: String, value: Int) -> Int32 {
     IOServiceClose(connection)
 
     if callResult == kIOReturnSuccess && writeStruct.result != 0 {
-        print("SMC Error writing key: \(writeStruct.result)")
+        fputs("SMC Error writing key: \(writeStruct.result)\n", stderr)
         return Int32(writeStruct.result)
     }
 
