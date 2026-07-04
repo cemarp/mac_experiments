@@ -105,45 +105,22 @@ class LocalSystemMonitor {
             print("Error running ioreg: \(error)")
         }
 
-        let spTask = Process()
-        spTask.launchPath = "/usr/sbin/system_profiler"
-        spTask.arguments = ["SPPowerDataType"]
-        let spPipe = Pipe()
-        spTask.standardOutput = spPipe
+        // system_profiler SPPowerDataType is very slow and blocks for 0.5s every 5s.
+        // It's much faster to query ioreg for AppleSmartBattery -> "AdapterInfo" or use pmset.
+        // We will just use pmset since it's already a fallback and much faster than system_profiler.
+
+        let pmsetTask = Process()
+        pmsetTask.launchPath = "/usr/bin/pmset"
+        pmsetTask.arguments = ["-g", "batt"]
+
+        let pmsetPipe = Pipe()
+        pmsetTask.standardOutput = pmsetPipe
 
         do {
-            try spTask.run()
-            let spData = spPipe.fileHandleForReading.readDataToEndOfFile()
-            if let spOutput = String(data: spData, encoding: .utf8) {
-                let lines = spOutput.components(separatedBy: .newlines)
-                for line in lines {
-                    if line.contains("Wattage (W):") {
-                        let parts = line.components(separatedBy: ":")
-                        if parts.count > 1 {
-                            let valStr = parts[1].trimmingCharacters(in: .whitespacesAndNewlines)
-                            if let val = Double(valStr) {
-                                chargerWattage = val
-                            }
-                        }
-                    }
-                }
-            }
-        } catch {
-            print("Error running system_profiler: \(error)")
-        }
-
-        if level == 0 {
-            let pmsetTask = Process()
-            pmsetTask.launchPath = "/usr/bin/pmset"
-            pmsetTask.arguments = ["-g", "batt"]
-
-            let pmsetPipe = Pipe()
-            pmsetTask.standardOutput = pmsetPipe
-
-            do {
-                try pmsetTask.run()
-                let pmsetData = pmsetPipe.fileHandleForReading.readDataToEndOfFile()
-                if let pmsetOutput = String(data: pmsetData, encoding: .utf8) {
+            try pmsetTask.run()
+            let pmsetData = pmsetPipe.fileHandleForReading.readDataToEndOfFile()
+            if let pmsetOutput = String(data: pmsetData, encoding: .utf8) {
+                if level == 0 {
                     if let regex = try? NSRegularExpression(pattern: #"(\d+)%;\s*(charging|discharging|AC attached)"#, options: .caseInsensitive) {
                         let nsRange = NSRange(pmsetOutput.startIndex..<pmsetOutput.endIndex, in: pmsetOutput)
                         if let match = regex.firstMatch(in: pmsetOutput, options: [], range: nsRange) {
@@ -158,19 +135,41 @@ class LocalSystemMonitor {
                         }
                     }
                 }
-            } catch {
-                print("Error running pmset: \(error)")
+
+                // Assuming standard wattage or dummy if parsing from ioreg requires complex matching
+                // Actually, pmset output usually doesn't show exact charger wattage without `pmset -g adapter`.
+                // Let's use `pmset -g adapter` which is very fast.
+                let adapterTask = Process()
+                adapterTask.launchPath = "/usr/bin/pmset"
+                adapterTask.arguments = ["-g", "adapter"]
+                let adapterPipe = Pipe()
+                adapterTask.standardOutput = adapterPipe
+                try adapterTask.run()
+                let adapterData = adapterPipe.fileHandleForReading.readDataToEndOfFile()
+                if let adapterOutput = String(data: adapterData, encoding: .utf8) {
+                    if let regex = try? NSRegularExpression(pattern: #"Wattage\s*=\s*(\d+)"#, options: .caseInsensitive) {
+                        let nsRange = NSRange(adapterOutput.startIndex..<adapterOutput.endIndex, in: adapterOutput)
+                        if let match = regex.firstMatch(in: adapterOutput, options: [], range: nsRange) {
+                            if let range = Range(match.range(at: 1), in: adapterOutput),
+                               let val = Double(adapterOutput[range]) {
+                                chargerWattage = val
+                            }
+                        }
+                    }
+                }
             }
+        } catch {
+            print("Error running pmset: \(error)")
         }
 
         return (level, cycles, isCharging, chargerWattage)
     }
 
     func updateBatteryControlState(_ state: BatteryControlState, completion: @escaping (Bool, Error?) -> Void) {
-        // macOS requires UI interactions (like the authentication prompt presented by NSAppleScript)
-        // to be invoked from the main thread. Running it on a background DispatchQueue causes it to
-        // silently fail or be denied by the system with error -60005.
-        DispatchQueue.main.async {
+        // Run AdminShell execution on a background thread so the UI is not blocked (no beachball).
+        // Since we are using `osascript` CLI tool directly via `Process` rather than `NSAppleScript`,
+        // it doesn't need to run on the main thread to show the UI prompt.
+        DispatchQueue.global(qos: .userInitiated).async {
             print("Received new battery control state: LimitEnabled: \(state.chargeLimitEnabled), Limit: \(state.chargeLimit), Sailing: \(state.sailingModeEnabled), Force Discharge: \(state.forceDischarge)")
 
             guard let smcUtilURL = Bundle.main.url(forResource: "smc_util", withExtension: nil) else {
@@ -191,7 +190,9 @@ class LocalSystemMonitor {
             let writeResult = AdminShell.shared.executeWithPrivileges(command: combinedCmd)
             print("[INSTRUMENTATION] Write combined result: \(writeResult.output ?? "none"), error: \(writeResult.error ?? "none")")
 
-            completion(true, nil)
+            DispatchQueue.main.async {
+                completion(true, nil)
+            }
         }
     }
 }

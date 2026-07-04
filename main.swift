@@ -120,6 +120,7 @@ if args.count == 3 {
     if let value = Int(args[2]) {
         let result = writeSMCKey(key: key, value: value)
         if result == kIOReturnSuccess {
+            // Success goes to stdout.
             print("Success")
             exit(0)
         } else {
